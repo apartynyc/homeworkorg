@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Homework Organizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: abc;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            background-color: white;
+        }
+
+        .classes-section {
+            border-right: 1px solid black;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+        }
+
+        .assignments-section {
+            overflow-y: auto;
+            padding: 20px;
+            height: 100vh;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+            font-family: abc;
+        }
+
+        h3 {
+            margin: 20px 0;
+            color: #666;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            font-family: abcmono;
+        }
+
+        .add-class-form {
+            margin-bottom: 20px;
+            font-family: abcmono;
+        }
+
+        .add-class-form input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: abcmono;
+        }
+
+        .classes-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .class-item {
+            padding: 10px;
+            background-color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: solid 1px black;
+            font-family: abcmono;
+        }
+
+        .class-item:hover {
+            background-color: #eee;
+        }
+
+        .class-item.selected {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .calendar-button {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            padding: 10px;
+            background-color: black;
+            color: white;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .calendar-button:hover {
+            background-color: white;
+            border: solid 1px black;
+            color: black;
+        }
+
+        .add-assignment-form {
+            margin-bottom: 20px;
+            display: grid;
+            gap: 10px;
+            grid-template-columns: 1fr 1fr 150px 150px auto;
+            align-items: end;
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: black;
+            color: white;
+            border: solid 1px black;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: white;
+            border: solid 1px black;
+            color: black;
+        }
+
+        .assignments-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .assignment-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto auto auto auto;
+            gap: 15px;
+            align-items: center;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #ddd;
+        }
+
+        .assignment-row.editing {
+            background-color: #fff;
+            border: 1px solid #2196F3;
+            padding: 20px;
+        }
+
+        .edit-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr 150px;
+            gap: 10px;
+            align-items: end;
+            width: 100%;
+        }
+
+        .edit-form input,
+        .edit-form select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .edit-form-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .assignment-row.priority-high {
+            border-left-color: #ff4444;
+        }
+
+        .assignment-row.priority-medium {
+            border-left-color: #ffa700;
+        }
+
+        .assignment-row.priority-low {
+            border-left-color: #4CAF50;
+        }
+
+        .status-toggle {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .status-incomplete {
+            background-color: #ffebee;
+            color: #ff4444;
+        }
+
+        .status-complete {
+            background-color: #e8f5e9;
+            color: #4CAF50;
+        }
+
+        .completed-section {
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+
+        .completed-section .assignment-row {
+            background-color: #f0f0f0;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .classes-section {
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+                height: auto;
+                padding-bottom: 80px;
+            }
+
+            .calendar-button {
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                width: calc(100% - 40px);
+                z-index: 100;
+            }
+
+            .add-assignment-form {
+                grid-template-columns: 1fr;
+            }
+
+            .assignment-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .edit-form {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @font-face {
+            font-family: abc;
+            src: url(ABCDiatypeVariable-Trial.ttf);
+        }
+
+        @font-face {
+            font-family: abcmono;
+            src: url(ABCDiatypeMonoVariable-Trial.ttf);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="classes-section">
+            <h2>Classes</h2>
+            <div class="add-class-form">
+                <input type="text" id="className" placeholder="Add new class...">
+                <button onclick="classManager.addClass()">Add Class</button>
+            </div>
+            <div id="classesList" class="classes-list"></div>
+            <button class="calendar-button" onclick="classManager.showCalendar()">
+                View Calendar
+            </button>
+        </div>
+
+        <div class="assignments-section">
+            <h2 id="selectedClassTitle">Select a Class</h2>
+            <div id="assignmentContent">
+                <div class="empty-state">
+                    <p>Select a class to view or add assignments</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ClassManager {
+            constructor() {
+                this.classes = [];
+                this.assignments = {};
+                this.selectedClass = null;
+                this.editingAssignmentId = null;
+                this.loadData();
+                this.renderClasses();
+            }
+
+            loadData() {
+                const savedClasses = localStorage.getItem('classes');
+                const savedAssignments = localStorage.getItem('assignments');
+                
+                if (savedClasses) this.classes = JSON.parse(savedClasses);
+                if (savedAssignments) this.assignments = JSON.parse(savedAssignments);
+            }
+
+            saveData() {
+                localStorage.setItem('classes', JSON.stringify(this.classes));
+                localStorage.setItem('assignments', JSON.stringify(this.assignments));
+            }
+
+            addClass() {
+                const input = document.getElementById('className');
+                const className = input.value.trim();
+                
+                if (className && !this.classes.includes(className)) {
+                    this.classes.push(className);
+                    this.assignments[className] = [];
+                    this.saveData();
+                    this.renderClasses();
+                    input.value = '';
+                }
+            }
+
+            selectClass(className) {
+                this.selectedClass = className;
+                this.editingAssignmentId = null;
+                this.renderAssignments();
+                
+                document.querySelectorAll('.class-item').forEach(item => {
+                    item.classList.toggle('selected', item.textContent === className);
+                });
+            }
+
+            addAssignment(className) {
+                const name = document.getElementById('assignmentName').value;
+                const dueDate = document.getElementById('dueDate').value;
+                const priority = document.getElementById('priority').value;
+
+                if (name && dueDate) {
+                    const assignment = {
+                        id: Date.now(),
+                        name,
+                        dueDate,
+                        priority,
+                        completed: false
+                    };
+
+                    this.assignments[className].push(assignment);
+                    this.saveData();
+                    this.renderAssignments();
+                    
+                    document.getElementById('assignmentName').value = '';
+                    document.getElementById('dueDate').value = '';
+                    document.getElementById('priority').value = 'medium';
+                }
+            }
+
+            toggleComplete(className, assignmentId) {
+                const assignment = this.assignments[className].find(a => a.id === assignmentId);
+                if (assignment) {
+                    assignment.completed = !assignment.completed;
+                    this.saveData();
+                    this.renderAssignments();
+                }
+            }
+
+            deleteAssignment(className, assignmentId) {
+                this.assignments[className] = this.assignments[className].filter(a => a.id !== assignmentId);
+                this.saveData();
+                this.renderAssignments();
+            }
+
+            editAssignment(assignmentId) {
+                this.editingAssignmentId = assignmentId;
+                this.renderAssignments();
+            }
+
+            saveEdit(className, assignmentId) {
+                const assignment = this.assignments[className].find(a => a.id === assignmentId);
+                if (assignment) {
+                    assignment.name = document.getElementById(`edit-name-${assignmentId}`).value;
+                    assignment.dueDate = document.getElementById(`edit-date-${assignmentId}`).value;
+                    assignment.priority = document.getElementById(`edit-priority-${assignmentId}`).value;
+                    this.editingAssignmentId = null;
+                    this.saveData();
+                    this.renderAssignments();
+                }
+            }
+
+            cancelEdit() {
+                this.editingAssignmentId = null;
+                this.renderAssignments();
+            }
+
+            showCalendar() {
+                window.location.href = 'calendartest.html';
+            }
+
+            renderClasses() {
+                const classList = document.getElementById('classesList');
+                classList.innerHTML = this.classes.map(className => `
+                    <div class="class-item ${className === this.selectedClass ? 'selected' : ''}"
+                         onclick="classManager.selectClass('${className}')">
+                        ${className}
+                    </div>
+                `).join('');
+            }
+
+            renderAssignments() {
+                const contentDiv = document.getElementById('assignmentContent');
+                const titleElement = document.getElementById('selectedClassTitle');
+
+                if (!this.selectedClass) {
+                    titleElement.textContent = 'Select a Class';
+                    contentDiv.innerHTML = `
+                        <div class="empty-state">
+                            <p>Select a class to view or add assignments</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                titleElement.textContent = this.selectedClass;
+
+                const assignments = this.assignments[this.selectedClass];
+                const activeAssignments = assignments.filter(a => !a.completed);
+                const completedAssignments = assignments.filter(a => a.completed);
+
+                contentDiv.innerHTML = `
+                    <div class="add-assignment-form">
+                        <div class="form-group">
+                            <label>Assignment Name</label>
+                            <input type="text" id="assignmentName" placeholder="Enter assignment name">
+                        </div>
+                        <div class="form-group">
+                            <label>Due Date</label>
+                            <input type="date" id="dueDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Priority</label>
+                            <select id="priority">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <button onclick="classManager.addAssignment('${this.selectedClass}')">
+                            Add Assignment
+                        </button>
+                    </div>
+
+                    <h3>Active Assignments</h3>
+                    <div class="assignments-list">
+                        ${activeAssignments.length === 0 ? `
+                            <div class="empty-state">
+                                <p>No active assignments</p>
+                            </div>
+                        ` : activeAssignments.map(assignment => this.renderAssignmentRow(assignment)).join('')}
+                    </div>
+
+                    <div class="completed-section">
+                        <h3>Completed Assignments</h3>
+                        <div class="assignments-list">
+                            ${completedAssignments.length === 0 ? `
+                                <div class="empty-state">
+                                    <p>No completed assignments</p>
+                                </div>
+                            ` : completedAssignments.map(assignment => this.renderAssignmentRow(assignment)).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderAssignmentRow(assignment) {
+                if (this.editingAssignmentId === assignment.id) {
+                    return `
+                        <div class="assignment-row editing priority-${assignment.priority}">
+                            <div class="edit-form">
+                                <input type="text" 
+                                    id="edit-name-${assignment.id}" 
+                                    value="${assignment.name}"
+                                    placeholder="Assignment name">
+                                <input type="date" 
+                                    id="edit-date-${assignment.id}" 
+                                    value="${assignment.dueDate}">
+                                <select id="edit-priority-${assignment.id}">
+                                    <option value="low" ${assignment.priority === 'low' ? 'selected' : ''}>Low</option>
+                                    <option value="medium" ${assignment.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                                    <option value="high" ${assignment.priority === 'high' ? 'selected' : ''}>High</option>
+                                </select>
+                            </div>
+                            <div class="edit-form-buttons">
+                                <button onclick="classManager.saveEdit('${this.selectedClass}', ${assignment.id})">
+                                    Save
+                                </button>
+                                <button onclick="classManager.cancelEdit()">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div class="assignment-row priority-${assignment.priority}">
+                        <div class="assignment-name">${assignment.name}</div>
+                        <div class="due-date">Due: ${new Date(assignment.dueDate).toLocaleDateString()}</div>
+                        <div class="priority">Priority: ${assignment.priority}</div>
+                        <button 
+                            class="status-toggle ${assignment.completed ? 'status-complete' : 'status-incomplete'}"
+                            onclick="classManager.toggleComplete('${this.selectedClass}', ${assignment.id})"
+                        >
+                            ${assignment.completed ? 'Completed' : 'Incomplete'}
+                        </button>
+                        <button onclick="classManager.editAssignment(${assignment.id})">
+                            Edit
+                        </button>
+                        <button 
+                            onclick="classManager.deleteAssignment('${this.selectedClass}', ${assignment.id})"
+                            class="delete-btn"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize the class manager
+        const classManager = new ClassManager();
+    </script>
+</body>
+</html>

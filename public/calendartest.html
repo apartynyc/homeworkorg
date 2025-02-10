@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homework Calendar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: abcmono;
+        }
+
+        body {
+            height: 100vh;
+            overflow: hidden;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .calendar-header {
+            background-color: white;
+            padding: 20px;
+            border-bottom: 1px solid black;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .calendar-title {
+            font-size: 24px;
+            color: #333;
+            font-family: abc;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-button {
+            padding: 8px 16px;
+            background-color: white;
+            color: black;
+            border: solid 1px black;
+            
+            cursor: pointer;
+        }
+
+        .nav-button:hover {
+            background-color: black;
+            color: white;
+        
+        }
+
+        .calendar-grid {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: white;
+        }
+
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+
+        .calendar-day {
+            background-color: #f8f8f8;
+            
+            min-height: 120px;
+            padding: 10px;
+            position: relative;
+        }
+
+        .calendar-day.today {
+            background-color: #e3f2fd;
+            border: solid 1px black;
+        }
+
+        .calendar-day.other-month {
+            background-color: #f0f0f0;
+            opacity: 0.7;
+        }
+
+        .date-number {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .assignment-dot {
+            width: 8px;
+            height: 8px;
+            
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        .priority-high { background-color: #ff4444; }
+        .priority-medium { background-color: #ffa700; }
+        .priority-low { background-color: #4CAF50; }
+
+        .assignments-list {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .calendar-assignment {
+            margin: 2px 0;
+            padding: 2px 4px;
+          
+            background-color: white;
+            font-size: 11px;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .calendar-assignment.completed {
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .back-button {
+            padding: 8px 16px;
+            background-color: black;
+            color: white;
+            border: solid 1px black;
+          
+            cursor: pointer;
+        }
+
+        .back-button:hover {
+            background-color: white;
+            border: solid 1px black;
+            color: black;
+        }
+
+        .assignment-tooltip {
+            position: absolute;
+            background-color: white;
+           
+            padding: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+            min-width: 200px;
+            display: none;
+        }
+
+        .calendar-assignment:hover + .assignment-tooltip {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .calendar-header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .weekdays {
+                font-size: 12px;
+            }
+
+            .calendar-day {
+                min-height: 80px;
+                font-size: 11px;
+            }
+        }
+        @font-face {
+            font-family: abc;
+            src: url(ABCDiatypeVariable-Trial.ttf);
+        }
+        @font-face {
+            font-family: abcmono;
+            src: url(ABCDiatypeMonoVariable-Trial.ttf);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="calendar-header">
+            <button class="back-button" onclick="calendar.goToMain()">← Back to Classes</button>
+            <h1 class="calendar-title">Assignment Calendar</h1>
+            <div class="calendar-nav">
+                <button class="nav-button" onclick="calendar.previousMonth()">←</button>
+                <span id="currentMonth">September 2024</span>
+                <button class="nav-button" onclick="calendar.nextMonth()">→</button>
+            </div>
+        </div>
+        <div id="calendarGrid" class="calendar-grid">
+            <div class="weekdays">
+                <div>Sun</div>
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
+            </div>
+            <div id="calendar" class="calendar"></div>
+        </div>
+    </div>
+
+    <script>
+        class Calendar {
+            constructor() {
+                this.currentDate = new Date();
+                this.assignments = {};
+                this.loadAssignments();
+                this.renderCalendar();
+            }
+
+            loadAssignments() {
+                const savedAssignments = localStorage.getItem('assignments');
+                if (savedAssignments) {
+                    const assignmentsByClass = JSON.parse(savedAssignments);
+                    // Flatten assignments from all classes
+                    this.assignments = Object.values(assignmentsByClass).flat();
+                }
+            }
+
+            goToMain() {
+                window.location.href = 'index.html';
+            }
+
+            previousMonth() {
+                this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+                this.renderCalendar();
+            }
+
+            nextMonth() {
+                this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+                this.renderCalendar();
+            }
+
+            getMonthData() {
+                const year = this.currentDate.getFullYear();
+                const month = this.currentDate.getMonth();
+                
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                
+                const startingDay = firstDay.getDay();
+                const totalDays = lastDay.getDate();
+                
+                // Get days from previous month
+                const prevMonthLastDay = new Date(year, month, 0).getDate();
+                const prevMonthDays = Array.from({ length: startingDay }, (_, i) => ({
+                    date: new Date(year, month - 1, prevMonthLastDay - startingDay + i + 1),
+                    isOtherMonth: true
+                }));
+                
+                // Current month days
+                const currentMonthDays = Array.from({ length: totalDays }, (_, i) => ({
+                    date: new Date(year, month, i + 1),
+                    isOtherMonth: false
+                }));
+                
+                // Next month days to complete grid
+                const remainingDays = (42 - (startingDay + totalDays));
+                const nextMonthDays = Array.from({ length: remainingDays }, (_, i) => ({
+                    date: new Date(year, month + 1, i + 1),
+                    isOtherMonth: true
+                }));
+                
+                return [...prevMonthDays, ...currentMonthDays, ...nextMonthDays];
+            }
+
+            getAssignmentsForDate(date) {
+                return this.assignments.filter(assignment => {
+                    const dueDate = new Date(assignment.dueDate);
+                    return dueDate.getDate() === date.getDate() &&
+                           dueDate.getMonth() === date.getMonth() &&
+                           dueDate.getFullYear() === date.getFullYear();
+                });
+            }
+
+            renderCalendar() {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                  'July', 'August', 'September', 'October', 'November', 'December'];
+                
+                document.getElementById('currentMonth').textContent = 
+                    `${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+
+                const calendarDays = this.getMonthData();
+                const today = new Date();
+                const calendar = document.getElementById('calendar');
+                
+                calendar.innerHTML = calendarDays.map(({ date, isOtherMonth }) => {
+                    const isToday = date.toDateString() === today.toDateString();
+                    const assignments = this.getAssignmentsForDate(date);
+                    
+                    return `
+                        <div class="calendar-day ${isToday ? 'today' : ''} ${isOtherMonth ? 'other-month' : ''}">
+                            <div class="date-number">${date.getDate()}</div>
+                            <div class="assignments-list">
+                                ${assignments.map(assignment => `
+                                    <div class="calendar-assignment ${assignment.completed ? 'completed' : ''}"
+                                         style="border-left: 3px solid ${
+                                             assignment.priority === 'high' ? '#ff4444' :
+                                             assignment.priority === 'medium' ? '#ffa700' : '#4CAF50'
+                                         }">
+                                        ${assignment.name}
+                                    </div>
+                                    <div class="assignment-tooltip">
+                                        <strong>${assignment.name}</strong><br>
+                                        Priority: ${assignment.priority}<br>
+                                        Status: ${assignment.completed ? 'Completed' : 'Incomplete'}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Initialize the calendar
+        const calendar = new Calendar();
+    </script>
+</body>
+</html>
