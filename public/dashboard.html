@@ -362,7 +362,7 @@
     </div>
 
     <script>
-        class ClassManager {
+       class ClassManager {
     constructor() {
         this.classes = [];
         this.assignments = {};
@@ -378,14 +378,13 @@
 
     async loadData() {
         try {
-            const response = await fetch('/api/classes', {
+            const response = await fetch('http://localhost:3000/api/classes', {
                 headers: {
                     'x-auth-token': this.token
                 }
             });
 
             if (response.status === 401) {
-                // Token expired or invalid
                 localStorage.removeItem('token');
                 window.location.href = '/';
                 return;
@@ -397,7 +396,6 @@
             this.renderClasses();
         } catch (err) {
             console.error('Error loading classes:', err);
-            // Show error to user
             alert('Error loading your classes. Please try refreshing the page.');
         }
     }
@@ -408,7 +406,7 @@
         
         if (className) {
             try {
-                const response = await fetch('/api/classes', {
+                const response = await fetch('http://localhost:3000/api/classes', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -436,35 +434,37 @@
     }
 
     async deleteClass(classId) {
-        try {
-            const response = await fetch(`/api/classes/${classId}`, {
-                method: 'DELETE',
-                headers: {
-                    'x-auth-token': this.token
+        if (confirm('Are you sure you want to delete this class? All assignments will be deleted too.')) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/classes/${classId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'x-auth-token': this.token
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
                 }
-            });
 
-            if (response.status === 401) {
-                localStorage.removeItem('token');
-                window.location.href = '/';
-                return;
+                this.classes = this.classes.filter(c => c._id !== classId);
+                delete this.assignments[classId];
+                if (this.selectedClass === classId) {
+                    this.selectedClass = null;
+                }
+                this.renderClasses();
+            } catch (err) {
+                console.error('Error deleting class:', err);
+                alert('Error deleting class. Please try again.');
             }
-
-            this.classes = this.classes.filter(c => c._id !== classId);
-            delete this.assignments[classId];
-            if (this.selectedClass === classId) {
-                this.selectedClass = null;
-            }
-            this.renderClasses();
-        } catch (err) {
-            console.error('Error deleting class:', err);
-            alert('Error deleting class. Please try again.');
         }
     }
 
     async loadAssignments() {
         try {
-            const response = await fetch('/api/assignments', {
+            const response = await fetch('http://localhost:3000/api/assignments', {
                 headers: {
                     'x-auth-token': this.token
                 }
@@ -489,6 +489,100 @@
         } catch (err) {
             console.error('Error loading assignments:', err);
             alert('Error loading assignments. Please try refreshing the page.');
+        }
+    }
+
+    async addAssignment(className) {
+        const name = document.getElementById('assignmentName').value;
+        const dueDate = document.getElementById('dueDate').value;
+        const priority = document.getElementById('priority').value;
+
+        if (name && dueDate) {
+            try {
+                const response = await fetch('http://localhost:3000/api/assignments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-auth-token': this.token
+                    },
+                    body: JSON.stringify({
+                        name,
+                        dueDate,
+                        priority,
+                        class: this.selectedClass
+                    })
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+
+                const newAssignment = await response.json();
+                if (!this.assignments[this.selectedClass]) {
+                    this.assignments[this.selectedClass] = [];
+                }
+                this.assignments[this.selectedClass].push(newAssignment);
+                this.renderAssignments();
+                
+                document.getElementById('assignmentName').value = '';
+                document.getElementById('dueDate').value = '';
+                document.getElementById('priority').value = 'medium';
+            } catch (err) {
+                console.error('Error adding assignment:', err);
+                alert('Error adding assignment. Please try again.');
+            }
+        }
+    }
+
+    async toggleComplete(className, assignmentId) {
+        try {
+            const assignment = this.assignments[className].find(a => a._id === assignmentId);
+            if (assignment) {
+                const response = await fetch(`http://localhost:3000/api/assignments/${assignmentId}/toggle`, {
+                    method: 'PUT',
+                    headers: {
+                        'x-auth-token': this.token
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+
+                const updatedAssignment = await response.json();
+                assignment.completed = updatedAssignment.completed;
+                this.renderAssignments();
+            }
+        } catch (err) {
+            console.error('Error toggling assignment:', err);
+            alert('Error updating assignment. Please try again.');
+        }
+    }
+
+    async deleteAssignment(className, assignmentId) {
+        try {
+            const response = await fetch(`http://localhost:3000/api/assignments/${assignmentId}`, {
+                method: 'DELETE',
+                headers: {
+                    'x-auth-token': this.token
+                }
+            });
+
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                window.location.href = '/';
+                return;
+            }
+
+            this.assignments[className] = this.assignments[className].filter(a => a._id !== assignmentId);
+            this.renderAssignments();
+        } catch (err) {
+            console.error('Error deleting assignment:', err);
+            alert('Error deleting assignment. Please try again.');
         }
     }
 
@@ -517,6 +611,130 @@
         if (this.selectedClass) {
             this.renderAssignments();
         }
+    }
+
+    renderAssignments() {
+        const contentDiv = document.getElementById('assignmentContent');
+        const titleElement = document.getElementById('selectedClassTitle');
+
+        if (!this.selectedClass) {
+            titleElement.textContent = 'Select a Class';
+            contentDiv.innerHTML = `
+                <div class="empty-state">
+                    <p>Select a class to view or add assignments</p>
+                </div>
+            `;
+            return;
+        }
+
+        const selectedClass = this.classes.find(c => c._id === this.selectedClass);
+        titleElement.textContent = selectedClass ? selectedClass.name : 'Select a Class';
+
+        const assignments = this.assignments[this.selectedClass] || [];
+        const activeAssignments = assignments.filter(a => !a.completed);
+        const completedAssignments = assignments.filter(a => a.completed);
+
+        contentDiv.innerHTML = `
+            <div class="add-assignment-form">
+                <div class="form-group">
+                    <label>Assignment Name</label>
+                    <input type="text" id="assignmentName" placeholder="Enter assignment name">
+                </div>
+                <div class="form-group">
+                    <label>Due Date</label>
+                    <input type="date" id="dueDate">
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select id="priority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <button onclick="classManager.addAssignment('${this.selectedClass}')">
+                    Add Assignment
+                </button>
+            </div>
+
+            <h3>Active Assignments</h3>
+            <div class="assignments-list">
+                ${activeAssignments.length === 0 ? `
+                    <div class="empty-state">
+                        <p>No active assignments</p>
+                    </div>
+                ` : activeAssignments.map(assignment => this.renderAssignmentRow(assignment)).join('')}
+            </div>
+
+            <div class="completed-section">
+                <h3>Completed Assignments</h3>
+                <div class="assignments-list">
+                    ${completedAssignments.length === 0 ? `
+                        <div class="empty-state">
+                            <p>No completed assignments</p>
+                        </div>
+                    ` : completedAssignments.map(assignment => this.renderAssignmentRow(assignment)).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    renderAssignmentRow(assignment) {
+        if (this.editingAssignmentId === assignment._id) {
+            return `
+                <div class="assignment-row editing priority-${assignment.priority}">
+                    <div class="edit-form">
+                        <input type="text" 
+                            id="edit-name-${assignment._id}" 
+                            value="${assignment.name}"
+                            placeholder="Assignment name">
+                        <input type="date" 
+                            id="edit-date-${assignment._id}" 
+                            value="${assignment.dueDate.split('T')[0]}">
+                        <select id="edit-priority-${assignment._id}">
+                            <option value="low" ${assignment.priority === 'low' ? 'selected' : ''}>Low</option>
+                            <option value="medium" ${assignment.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                            <option value="high" ${assignment.priority === 'high' ? 'selected' : ''}>High</option>
+                        </select>
+                    </div>
+                    <div class="edit-form-buttons">
+                        <button onclick="classManager.saveEdit('${this.selectedClass}', ${assignment._id})">
+                            Save
+                        </button>
+                        <button onclick="classManager.cancelEdit()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return `
+            <div class="assignment-row priority-${assignment.priority}">
+                <div class="assignment-name">${assignment.name}</div>
+                <div class="due-date">Due: ${new Date(assignment.dueDate).toLocaleDateString()}</div>
+                <div class="priority">Priority: ${assignment.priority}</div>
+                <button 
+                    class="status-toggle ${assignment.completed ? 'status-complete' : 'status-incomplete'}"
+                    onclick="classManager.toggleComplete('${this.selectedClass}', '${assignment._id}')"
+                >
+                    ${assignment.completed ? 'Completed' : 'Incomplete'}
+                </button>
+                <button onclick="classManager.editAssignment('${assignment._id}')">
+                    Edit
+                </button>
+                <button 
+                    onclick="classManager.deleteAssignment('${this.selectedClass}', '${assignment._id}')"
+                    class="delete-btn"
+                >
+                    Delete
+                </button>
+            </div>
+        `;
+    }
+
+    showCalendar() {
+        window.location.href = '/calendartest.html';
     }
 
     logout() {
