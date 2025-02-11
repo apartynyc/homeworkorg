@@ -93,8 +93,8 @@
         }
 
         .class-item.selected {
-            background-color: #2196F3;
-            color: white;
+            background-color: #ddd;
+            color: black;
         }
 
         .delete-class-btn {
@@ -203,13 +203,13 @@
             align-items: center;
             padding: 15px;
             background-color: #f9f9f9;
-            border-radius: 4px;
+            
             border-left: 4px solid #ddd;
         }
 
         .assignment-row.editing {
             background-color: #fff;
-            border: 1px solid #2196F3;
+            border: 1px solid black;
             padding: 20px;
         }
 
@@ -362,7 +362,7 @@
     </div>
 
     <script>
-       class ClassManager {
+class ClassManager {
     constructor() {
         this.classes = [];
         this.assignments = {};
@@ -586,6 +586,54 @@
         }
     }
 
+    async saveEdit(className, assignmentId) {
+        try {
+            const assignment = this.assignments[className].find(a => a._id === assignmentId);
+            if (assignment) {
+                const name = document.getElementById(`edit-name-${assignmentId}`).value;
+                const dueDate = document.getElementById(`edit-date-${assignmentId}`).value;
+                const priority = document.getElementById(`edit-priority-${assignmentId}`).value;
+
+                const response = await fetch(`http://localhost:3000/api/assignments/${assignmentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-auth-token': this.token
+                    },
+                    body: JSON.stringify({
+                        name,
+                        dueDate,
+                        priority
+                    })
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+
+                const updatedAssignment = await response.json();
+                Object.assign(assignment, updatedAssignment);
+                this.editingAssignmentId = null;
+                this.renderAssignments();
+            }
+        } catch (err) {
+            console.error('Error updating assignment:', err);
+            alert('Error updating assignment. Please try again.');
+        }
+    }
+
+    editAssignment(assignmentId) {
+        this.editingAssignmentId = assignmentId;
+        this.renderAssignments();
+    }
+
+    cancelEdit() {
+        this.editingAssignmentId = null;
+        this.renderAssignments();
+    }
+
     selectClass(classId) {
         this.selectedClass = classId;
         this.editingAssignmentId = null;
@@ -698,7 +746,7 @@
                         </select>
                     </div>
                     <div class="edit-form-buttons">
-                        <button onclick="classManager.saveEdit('${this.selectedClass}', ${assignment._id})">
+                        <button onclick="classManager.saveEdit('${this.selectedClass}', '${assignment._id}')">
                             Save
                         </button>
                         <button onclick="classManager.cancelEdit()">
@@ -739,7 +787,7 @@
 
     logout() {
         localStorage.removeItem('token');
-        window.location.href = '/';
+        window.location.href = '/index.html';
     }
 }
 

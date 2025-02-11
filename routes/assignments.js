@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Assignment = require('../models/Assignment');
-const Class = require('../models/Class');
 
 // Get all assignments for a user
 router.get('/', auth, async (req, res) => {
@@ -13,8 +12,8 @@ router.get('/', auth, async (req, res) => {
             .sort({ dueDate: 1 });
         res.json(assignments);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        console.error('Error fetching assignments:', err);
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -27,39 +26,30 @@ router.get('/class/:classId', auth, async (req, res) => {
         }).sort({ dueDate: 1 });
         res.json(assignments);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        console.error('Error fetching class assignments:', err);
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
 // Add a new assignment
 router.post('/', auth, async (req, res) => {
     try {
-        const { name, classId, dueDate, priority } = req.body;
-
-        // Verify class exists and belongs to user
-        const classItem = await Class.findOne({
-            _id: classId,
-            user: req.user.id
-        });
-
-        if (!classItem) {
-            return res.status(404).json({ msg: 'Class not found' });
-        }
+        const { name, class: classId, dueDate, priority, description } = req.body;
 
         const newAssignment = new Assignment({
             name,
             class: classId,
             dueDate,
             priority,
+            description,
             user: req.user.id
         });
 
         const assignment = await newAssignment.save();
         res.json(assignment);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        console.error('Error creating assignment:', err);
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -77,11 +67,12 @@ router.put('/:id', auth, async (req, res) => {
             return res.status(401).json({ msg: 'Not authorized' });
         }
 
-        const { name, dueDate, priority, completed } = req.body;
+        const { name, dueDate, priority, completed, description } = req.body;
         const assignmentFields = {};
         if (name) assignmentFields.name = name;
         if (dueDate) assignmentFields.dueDate = dueDate;
         if (priority) assignmentFields.priority = priority;
+        if (description) assignmentFields.description = description;
         if (completed !== undefined) assignmentFields.completed = completed;
 
         assignment = await Assignment.findByIdAndUpdate(
@@ -92,8 +83,8 @@ router.put('/:id', auth, async (req, res) => {
 
         res.json(assignment);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        console.error('Error updating assignment:', err);
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -119,8 +110,8 @@ router.put('/:id/toggle', auth, async (req, res) => {
 
         res.json(assignment);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        console.error('Error toggling assignment:', err);
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -141,8 +132,8 @@ router.delete('/:id', auth, async (req, res) => {
         await assignment.remove();
         res.json({ msg: 'Assignment removed' });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        console.error('Error deleting assignment:', err);
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
