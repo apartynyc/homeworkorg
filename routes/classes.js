@@ -4,14 +4,14 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Class = require('../models/Class');
 
-// Get all classes for a user
+// Get all classes for logged in user
 router.get('/', auth, async (req, res) => {
     try {
         const classes = await Class.find({ user: req.user.id }).sort({ createdAt: -1 });
         res.json(classes);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -20,40 +20,16 @@ router.post('/', auth, async (req, res) => {
     try {
         const newClass = new Class({
             name: req.body.name,
-            user: req.user.id
+            user: req.user.id,
+            color: req.body.color || '#2196F3',
+            description: req.body.description
         });
 
         const classItem = await newClass.save();
         res.json(classItem);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-});
-
-// Delete a class
-router.delete('/:id', auth, async (req, res) => {
-    try {
-        let classItem = await Class.findById(req.params.id);
-        
-        // Check if class exists
-        if (!classItem) {
-            return res.status(404).json({ msg: 'Class not found' });
-        }
-
-        // Make sure user owns class
-        if (classItem.user.toString() !== req.user.id) {
-            return res.status(401).json({ msg: 'Not authorized' });
-        }
-
-        await classItem.remove();
-        res.json({ msg: 'Class removed' });
-    } catch (err) {
-        console.error(err.message);
-        if (err.kind === 'ObjectId') {
-            return res.status(404).json({ msg: 'Class not found' });
-        }
-        res.status(500).send('Server Error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -72,16 +48,39 @@ router.put('/:id', auth, async (req, res) => {
             return res.status(401).json({ msg: 'Not authorized' });
         }
 
+        // Update the class
         classItem = await Class.findByIdAndUpdate(
             req.params.id,
-            { $set: { name: req.body.name } },
+            { $set: req.body },
             { new: true }
         );
 
         res.json(classItem);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(500).json({ msg: 'Server error' });
+    }
+});
+
+// Delete a class
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const classItem = await Class.findById(req.params.id);
+
+        if (!classItem) {
+            return res.status(404).json({ msg: 'Class not found' });
+        }
+
+        // Make sure user owns class
+        if (classItem.user.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'Not authorized' });
+        }
+
+        await classItem.remove();
+        res.json({ msg: 'Class removed' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 

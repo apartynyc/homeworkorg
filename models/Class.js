@@ -18,7 +18,7 @@ const classSchema = new mongoose.Schema({
     },
     color: {
         type: String,
-        default: '#2196F3' // Default blue color
+        default: '#2196F3'
     },
     description: {
         type: String,
