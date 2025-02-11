@@ -4,11 +4,10 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Assignment = require('../models/Assignment');
 
-// Get all assignments for a user
+// Get all assignments for logged in user
 router.get('/', auth, async (req, res) => {
     try {
         const assignments = await Assignment.find({ user: req.user.id })
-            .populate('class', 'name')
             .sort({ dueDate: 1 });
         res.json(assignments);
     } catch (err) {
@@ -34,15 +33,14 @@ router.get('/class/:classId', auth, async (req, res) => {
 // Add a new assignment
 router.post('/', auth, async (req, res) => {
     try {
-        const { name, class: classId, dueDate, priority, description } = req.body;
+        const { name, class: classId, dueDate, priority } = req.body;
 
         const newAssignment = new Assignment({
             name,
             class: classId,
+            user: req.user.id,  // Set the user ID from the auth token
             dueDate,
-            priority,
-            description,
-            user: req.user.id
+            priority
         });
 
         const assignment = await newAssignment.save();
@@ -62,22 +60,21 @@ router.put('/:id', auth, async (req, res) => {
             return res.status(404).json({ msg: 'Assignment not found' });
         }
 
-        // Make sure user owns assignment
+        // Verify the assignment belongs to the user
         if (assignment.user.toString() !== req.user.id) {
             return res.status(401).json({ msg: 'Not authorized' });
         }
 
-        const { name, dueDate, priority, completed, description } = req.body;
-        const assignmentFields = {};
-        if (name) assignmentFields.name = name;
-        if (dueDate) assignmentFields.dueDate = dueDate;
-        if (priority) assignmentFields.priority = priority;
-        if (description) assignmentFields.description = description;
-        if (completed !== undefined) assignmentFields.completed = completed;
-
+        const { name, dueDate, priority } = req.body;
         assignment = await Assignment.findByIdAndUpdate(
             req.params.id,
-            { $set: assignmentFields },
+            { 
+                $set: { 
+                    name, 
+                    dueDate, 
+                    priority 
+                } 
+            },
             { new: true }
         );
 
@@ -88,7 +85,7 @@ router.put('/:id', auth, async (req, res) => {
     }
 });
 
-// Toggle assignment completion status
+// Toggle assignment completion
 router.put('/:id/toggle', auth, async (req, res) => {
     try {
         let assignment = await Assignment.findById(req.params.id);
@@ -97,17 +94,19 @@ router.put('/:id/toggle', auth, async (req, res) => {
             return res.status(404).json({ msg: 'Assignment not found' });
         }
 
-        // Make sure user owns assignment
+        // Verify the assignment belongs to the user
         if (assignment.user.toString() !== req.user.id) {
             return res.status(401).json({ msg: 'Not authorized' });
         }
 
-        assignment = await Assignment.findByIdAndUpdate(
-            req.params.id,
-            { $set: { completed: !assignment.completed } },
-            { new: true }
-        );
+        assignment.completed = !assignment.completed;
+        if (assignment.completed) {
+            assignment.completedAt = Date.now();
+        } else {
+            assignment.completedAt = null;
+        }
 
+        await assignment.save();
         res.json(assignment);
     } catch (err) {
         console.error('Error toggling assignment:', err);
@@ -124,7 +123,7 @@ router.delete('/:id', auth, async (req, res) => {
             return res.status(404).json({ msg: 'Assignment not found' });
         }
 
-        // Make sure user owns assignment
+        // Verify the assignment belongs to the user
         if (assignment.user.toString() !== req.user.id) {
             return res.status(401).json({ msg: 'Not authorized' });
         }

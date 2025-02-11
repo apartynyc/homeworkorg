@@ -30,10 +30,6 @@ const assignmentSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    description: {
-        type: String,
-        trim: true
-    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -43,11 +39,7 @@ const assignmentSchema = new mongoose.Schema({
     }
 });
 
-assignmentSchema.pre('save', function(next) {
-    if (this.isModified('completed') && this.completed) {
-        this.completedAt = new Date();
-    }
-    next();
-});
+// Add index for faster querying by user
+assignmentSchema.index({ user: 1, class: 1 });
 
 module.exports = mongoose.model('Assignment', assignmentSchema);
