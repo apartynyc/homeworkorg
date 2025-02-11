@@ -6,16 +6,23 @@ const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
 const User = require('../models/User');
 
+// Health check endpoint
+router.get('/health', (req, res) => {
+    res.json({ status: 'OK' });
+});
+
 // @route   POST api/auth/register
 // @desc    Register a user
 // @access  Public
 router.post('/register', async (req, res) => {
     try {
+        console.log('Register attempt:', req.body);
         const { email, password } = req.body;
 
-        // Check if user already exists
+        // Check if user exists
         let user = await User.findOne({ email });
         if (user) {
+            console.log('Registration failed: User exists');
             return res.status(400).json({ msg: 'User already exists' });
         }
 
@@ -29,10 +36,11 @@ router.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(password, salt);
 
-        // Save user to database
+        // Save user
         await user.save();
+        console.log('User saved successfully');
 
-        // Create and return JWT token
+        // Create token
         const payload = {
             user: {
                 id: user.id
@@ -44,13 +52,17 @@ router.post('/register', async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: '24h' },
             (err, token) => {
-                if (err) throw err;
+                if (err) {
+                    console.error('JWT Error:', err);
+                    throw err;
+                }
+                console.log('Registration successful, sending token');
                 res.json({ token });
             }
         );
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('Registration error:', err);
+        res.status(500).json({ msg: 'Server error', error: err.message });
     }
 });
 
@@ -59,21 +71,28 @@ router.post('/register', async (req, res) => {
 // @access  Public
 router.post('/login', async (req, res) => {
     try {
+        console.log('Login attempt:', req.body);
         const { email, password } = req.body;
 
-        // Check if user exists
+        // Check for user
         let user = await User.findOne({ email });
         if (!user) {
+            console.log('Login failed: User not found');
             return res.status(400).json({ msg: 'Invalid credentials' });
         }
 
         // Validate password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
+            console.log('Login failed: Password incorrect');
             return res.status(400).json({ msg: 'Invalid credentials' });
         }
 
-        // Create and return JWT token
+        // Update last login
+        user.lastLogin = Date.now();
+        await user.save();
+
+        // Create token
         const payload = {
             user: {
                 id: user.id
@@ -85,13 +104,17 @@ router.post('/login', async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: '24h' },
             (err, token) => {
-                if (err) throw err;
+                if (err) {
+                    console.error('JWT Error:', err);
+                    throw err;
+                }
+                console.log('Login successful, sending token');
                 res.json({ token });
             }
         );
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('Login error:', err);
+        res.status(500).json({ msg: 'Server error', error: err.message });
     }
 });
 
@@ -100,56 +123,11 @@ router.post('/login', async (req, res) => {
 // @access  Private
 router.get('/user', auth, async (req, res) => {
     try {
-        // Get user from database (exclude password)
         const user = await User.findById(req.user.id).select('-password');
         res.json(user);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
-    }
-});
-
-// @route   POST api/auth/logout
-// @desc    Logout user / Clear cookie
-// @access  Private
-router.post('/logout', auth, (req, res) => {
-    try {
-        // In a more complex setup, you might want to invalidate the token here
-        // For now, we'll just send a success response
-        res.json({ msg: 'Logged out successfully' });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
-    }
-});
-
-// @route   PUT api/auth/password
-// @desc    Change password
-// @access  Private
-router.put('/password', auth, async (req, res) => {
-    try {
-        const { currentPassword, newPassword } = req.body;
-
-        // Get user from database
-        const user = await User.findById(req.user.id);
-
-        // Check current password
-        const isMatch = await bcrypt.compare(currentPassword, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ msg: 'Current password is incorrect' });
-        }
-
-        // Hash new password
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
-
-        // Save user with new password
-        await user.save();
-
-        res.json({ msg: 'Password updated successfully' });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('Get user error:', err);
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 

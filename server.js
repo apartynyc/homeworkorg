@@ -5,15 +5,11 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-// Fix Mongoose deprecation warning
-mongoose.set('strictQuery', false);
-
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // Serve static files from public directory
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
@@ -43,36 +39,9 @@ if (process.env.NODE_ENV === 'production') {
     });
 }
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
-});
-
-// Handle server errors
-server.on('error', (error) => {
-    if (error.code === 'EADDRINUSE') {
-        console.log('Port is busy, trying again...');
-        setTimeout(() => {
-            server.close();
-            server.listen(PORT);
-        }, 1000);
-    } else {
-        console.error('Server error:', error);
-    }
-});
-
-// Handle process termination
-process.on('SIGTERM', () => {
-    server.close(() => {
-        console.log('Server terminated');
-    });
-});
-
-process.on('SIGINT', () => {
-    server.close(() => {
-        console.log('Server terminated');
-        process.exit(0);
-    });
 });
